@@ -2,7 +2,7 @@
 
 > **Elaboración propia a partir de datos abiertos. No es una publicación oficial de la Secretaría de Educación de la Nación ni refleja su posición.**
 
-> **Estado: análisis v0.x, en construcción.** Fases 1 a 6 completas (inventario, claves, desempeño, NSE, familias, diccionario e informe en Quarto). Falta la publicación del informe como página web.
+> **Estado: análisis v0.x, en construcción.** Fases 1 a 6 completas (inventario, claves, desempeño, NSE, familias, diccionario e informe en Quarto). Informe publicado como página web: https://friedsam-r.github.io/aprender-auditoria-serie/reports/informe.html
 
 ## Pregunta
 
@@ -39,7 +39,7 @@ Rscript R/06_diccionario.R
 quarto render reports/informe.qmd
 ```
 
-Probado con R 4.3.3 (readr 2.1.5, dplyr 1.1.4, tidyr 1.3.1, ggplot2 3.4.4, readxl 1.4.3). Usa paquetes del tidyverse.
+Probado con R 4.3.3 (readr 2.1.5, dplyr 1.1.4, tidyr 1.3.1, ggplot2 3.4.4, readxl 1.4.3) y con R 4.6.0, con las mismas cifras en las seis fases (las versiones de los paquetes en cada ejecución figuran al pie del informe). Usa paquetes del tidyverse.
 
 ## Limitaciones
 
