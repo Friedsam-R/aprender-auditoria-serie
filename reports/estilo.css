@@ -1,0 +1,15 @@
+/* Paleta del proyecto: azul oscuro y grises. Sin logos ni tipografias institucionales. */
+:root { --azul: #242C4F; --gris-oscuro: #333333; --gris-claro: #E7E7E7; --gris-suave: #F5F5F5; }
+
+h1, h2, h3, h4, .title { color: var(--azul); }
+h1.title { font-weight: 700; }
+.subtitle { color: var(--gris-oscuro); }
+a { color: var(--azul); }
+
+table thead th { background-color: var(--azul); color: #ffffff; border-bottom: none; }
+table tbody tr:nth-child(even) { background-color: var(--gris-suave); }
+table { border-bottom: 2px solid var(--azul); }
+
+#TOC a { color: var(--gris-oscuro); }
+#TOC a.active { color: var(--azul); font-weight: 600; }
+blockquote { border-left: 4px solid var(--azul); }

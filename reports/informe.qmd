@@ -1,0 +1,211 @@
+---
+title: "Catálogo y auditoría de las bases agregadas de Aprender (2016-2025)"
+subtitle: "Qué se puede y qué no se puede comparar entre ediciones"
+lang: es
+date: last-modified
+date-format: long
+format:
+  html:
+    toc: true
+    toc-title: "Contenido"
+    number-sections: true
+    embed-resources: true
+    css: estilo.css
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+```{r}
+#| label: preparacion
+library(dplyr)
+library(readr)
+library(knitr)
+
+options(knitr.kable.NA = "")
+ruta <- "../output/tablas/"
+leer <- function(archivo) read_csv(paste0(ruta, archivo), show_col_types = FALSE, trim_ws = FALSE)
+
+inv   <- leer("inventario_archivos.csv")
+jur   <- leer("jurisdicciones_por_edicion.csv")
+vari  <- leer("jurisdicciones_variantes.csv")
+cats  <- leer("categorias_sector_ambito.csv")
+des   <- leer("desempeno_por_edicion.csv")
+nse   <- leer("nse_por_edicion.csv")
+fam   <- leer("familias_resumen.csv")
+dic   <- leer("diccionario_disponibilidad.csv")
+sinb  <- leer("diccionario_hojas_sin_base.csv")
+
+n0 <- function(x) format(round(x), big.mark = ".", decimal.mark = ",")
+n_bases <- nrow(inv)
+n_dep   <- sum(inv$tiene_departamento)
+n_var_bases <- n_distinct(vari$id)
+n_var_orto <- n_distinct(vari$valor_crudo)
+n_sin_nse <- sum(nse$tipo == "ninguno")
+n_def_nse <- n_distinct(nse$tipo[nse$tipo != "ninguno"])
+n_fam <- nrow(fam)
+n_fam_12 <- sum(fam$ediciones == n_bases)
+n_dic <- sum(dic$hay_diccionario)
+falta_jur <- jur |> filter(jurisdicciones < 24)
+sin_datos <- cats |> filter(valor == "Sin datos")
+```
+
+::: {.callout-note}
+## Sobre este informe
+Elaboración propia a partir de datos abiertos de la Secretaría de Educación de la Nación. **No es una publicación oficial** de la Secretaría ni refleja su posición. Los colores están inspirados en tableros públicos de datos educativos; no se usan logos, escudos ni tipografías institucionales.
+:::
+
+# Resumen
+
+Se auditaron las `r n_bases` bases agregadas de Matemática de Aprender publicadas como datos abiertos (ediciones 2016 a 2025), con el objetivo de saber qué elementos se pueden armonizar entre ediciones y cuáles no. **No se comparó el desempeño entre ediciones.**
+
+- **Estructura:** `r n_dep` de las `r n_bases` bases traen departamento; las dos muestrales (2016 secundaria y 2022 primaria) solo llegan a jurisdicción.
+- **Jurisdicciones:** hasta 2019 la columna `cod_provincia` guarda **nombres, no códigos**, con `r n_var_orto` ortografías distintas del canónico (por ejemplo "Buenos aires" o "Ciudad de Buenos Aires"). Aparecen en `r n_var_bases` bases y se armonizan con una regla simple. La base de `r paste(falta_jur$id, collapse = ", ")` tiene `r falta_jur$jurisdicciones` jurisdicciones: **falta `r falta_jur$faltantes`**.
+- **Categorías:** hay `r nrow(sin_datos)` casos de "Sin datos" en sector o ámbito (una fila por caso, en 2016) y una etiqueta distinta ("Privada" en lugar de "Privado") en la muestra de 2016.
+- **Desempeño:** las cuatro columnas de niveles existen en todas las bases, pero el nombre del primer nivel tiene `r n_distinct(des$nombre_primer_nivel)` variantes.
+- **Nivel socioeconómico:** `r n_sin_nse` bases (2016 a 2018) no tienen columnas de NSE, y las demás usan `r n_def_nse` definiciones distintas (niveles, quintiles, o ambos en una misma base).
+- **Variables:** se identifican `r n_fam` familias por prefijo de nombre, y solo `r n_fam_12` están presentes en las `r n_bases` bases.
+- **Diccionario:** hay hoja para `r n_dic` de las `r n_bases` bases. No hay para 2025.
+
+# Pregunta y alcance
+
+Entre las bases agregadas de Aprender publicadas como datos abiertos, ¿qué elementos (claves geográficas, categorías, columnas de desempeño, nivel socioeconómico y familias de variables) se pueden armonizar entre ediciones, y cuáles no?
+
+Fuera de alcance: cualquier serie o comparación de desempeño entre ediciones, el emparejamiento de ítems de cuestionarios, Lengua, el Relevamiento Anual y cualquier juicio sobre la calidad de los datos de una jurisdicción.
+
+# Inventario
+
+```{r}
+#| label: tabla-inventario
+inv |>
+  transmute(
+    Base = id, Año = anio, Nivel = nivel, Tipo = tipo,
+    Filas = n0(filas), Columnas = n0(columnas),
+    `Clave de provincia` = clave_provincia,
+    `Tiene departamento` = ifelse(tiene_departamento, "sí", "no")
+  ) |>
+  kable(align = "lcllrrlc")
+```
+
+"No indicado" significa que el dato no figura en el nombre del archivo; no se supone. El nivel de la base de 2018 queda sin determinar. La letra final de cada código indica el nivel (P primaria, S secundaria) y "m" indica base muestral.
+
+# Claves y categorías
+
+## Jurisdicciones
+
+Los valores de provincia se normalizan recortando espacios, pasando a minúsculas y quitando tildes, más dos reglas manuales (ver el diseño). Con eso, cada base se mapea sin ningún valor sin resolver a las 24 jurisdicciones canónicas (los nombres de la base de 2025). Estas son las variantes encontradas:
+
+```{r}
+#| label: tabla-variantes
+vari |>
+  transmute(
+    Base = id,
+    `Valor en la base` = ifelse(startsWith(valor_crudo, " "), paste0("(espacio inicial) ", trimws(valor_crudo)), valor_crudo),
+    `Equivale a` = canonico, Filas = filas
+  ) |>
+  kable(align = "lllr")
+```
+
+En la base de `r paste(falta_jur$id, collapse = ", ")` hay `r falta_jur$jurisdicciones` jurisdicciones y falta **`r falta_jur$faltantes`**. Los archivos publicados no explican por qué.
+
+## Sector y ámbito
+
+```{r}
+#| label: tabla-sindatos
+sin_datos |>
+  transmute(Base = id, Variable = variable, `Filas con "Sin datos"` = filas) |>
+  kable(align = "llr")
+```
+
+La muestra de 2016 de secundaria usa la etiqueta "Privada"; el resto usa "Privado". Cualquier unión entre bases requiere unificar estas etiquetas.
+
+# Columnas de desempeño
+
+Cada base tiene cuatro columnas `mdesemp_*` (los cuatro niveles de desempeño). El nombre del primer nivel cambia entre ediciones, pero se identifica con un patrón. Los totales ponderados se calculan solo como control interno de lectura; **no son comparables entre ediciones** y no se grafica ninguna evolución.
+
+```{r}
+#| label: tabla-desempeno
+des |>
+  transmute(
+    Base = id, `Nombre del primer nivel` = sub("^mdesemp_", "", nombre_primer_nivel),
+    `Total ponderado` = n0(total_ponderado),
+    `Filas con total cero` = filas_con_total_cero,
+    `Celdas vacías` = celdas_vacias_en_desempeno
+  ) |>
+  kable(align = "llrrr")
+```
+
+Todas las columnas de datos de las `r n_bases` bases se leen como numéricas, sin ninguna celda no numérica. Los casilleros vacíos se tratan como cero en el total, igual que en los proyectos anteriores de esta serie.
+
+# Nivel socioeconómico
+
+```{r}
+#| label: tabla-nse
+nse |>
+  transmute(Base = id, `Columnas de NSE` = columnas_nse, Definición = tipo) |>
+  kable(align = "lrl")
+```
+
+Los nombres de columna también cambian dentro de una misma definición (por ejemplo, los quintiles figuran como `NSE_quintiles_Q1`, `NSE_nivel_Q1` o `NSE_nivel_Q1_NSE_más_bajo`, según la edición). Sin las notas técnicas, no es posible afirmar que las categorías de NSE de distintas ediciones midan lo mismo.
+
+# Familias de variables
+
+![](../output/figuras/fig1_familias_por_edicion.png){fig-alt="Matriz que muestra, para cada edición, qué familias de variables están presentes y cuántas columnas tiene cada una."}
+
+Las familias se definen por el prefijo del nombre de columna, sin garantía de significado. De las `r n_fam` familias, solo `ap` (los ítems de cuestionario, con nombres que cambian de formato) y `mdesemp` están en todas las bases. El resto aparece y desaparece entre 2016-2019 y 2021-2025.
+
+# Diccionario
+
+```{r}
+#| label: tabla-diccionario
+dic |>
+  transmute(Base = id, `Hoja del diccionario` = ifelse(is.na(hoja), "sin hoja", hoja), Variables = variables) |>
+  kable(align = "llr")
+```
+
+Hojas del diccionario sin base agregada en la carpeta de datos: `r paste(sinb$hoja, collapse = "; ")`.
+
+El diccionario describe las variables de las bases de **estudiantes**; no necesariamente documenta las columnas de las bases agregadas (que derivan de ellas). La equivalencia entre bases y hojas se hizo por año y nivel, y es un supuesto.
+
+# Guía de compatibilidad
+
+| Elemento | ¿Armonizable? | Evidencia y condición |
+|---|---|---|
+| Nombre de jurisdicción | Sí | Normalización de texto y dos reglas manuales; falta una jurisdicción en una base |
+| Departamento | Parcial | No existe en las dos bases muestrales |
+| Sector y ámbito | Sí, con cuidado | Unificar "Privada" y "Privado" y decidir qué hacer con "Sin datos" |
+| Columnas de desempeño (nombres) | Sí | Cuatro columnas en todas las bases; se identifican por patrón |
+| Valores de desempeño | No evaluado | Requiere leer las notas técnicas de cada edición |
+| NSE | No | Ausente en 2016-2018; tres definiciones distintas en las demás |
+| Resto de variables | No evaluado | Los ítems de cuestionario no se emparejaron entre ediciones |
+
+# Limitaciones
+
+1. Las familias por prefijo no garantizan que dos columnas con el mismo prefijo midan lo mismo en distintas ediciones.
+2. No se emparejó ningún ítem de cuestionario entre ediciones.
+3. El diccionario documenta las bases de estudiantes; la equivalencia con las bases agregadas es un supuesto.
+4. El nivel de la base de 2018 y el tipo de varias ediciones no figuran en los nombres de archivo.
+5. No se evaluó la comparabilidad del desempeño.
+6. Los hallazgos describen los archivos publicados y no explican por qué son así.
+
+# Reproducibilidad
+
+Los datos no están en el repositorio. Las instrucciones de descarga están en `data/README.md`. Para regenerar este informe:
+
+```
+Rscript R/01_inventario.R
+Rscript R/02_claves.R
+Rscript R/03_desempeno.R
+Rscript R/04_nse.R
+Rscript R/05_familias.R
+Rscript R/06_diccionario.R
+quarto render reports/informe.qmd
+```
+
+```{r}
+#| label: sesion
+vers <- function(p) as.character(packageVersion(p))
+cat("Versión de R:", R.version.string, "\n")
+cat("dplyr", vers("dplyr"), "| readr", vers("readr"), "| readxl", vers("readxl"), "| knitr", vers("knitr"), "\n")
+```

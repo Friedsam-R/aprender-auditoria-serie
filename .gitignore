@@ -1,0 +1,12 @@
+# Datos: no se suben (ver data/README.md)
+data/raw/
+data/processed/
+
+# Salidas generadas
+output/
+
+# R / RStudio
+.Rproj.user/
+.Rhistory
+.RData
+.Ruserdata
